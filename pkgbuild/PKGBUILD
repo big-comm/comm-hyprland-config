@@ -1,7 +1,9 @@
 # Maintainer: Tales A. Mendonça <talesam@gmail.com>
+# Maintainer: Leonardo Berbert  <leo4berbert@gmail.com>
 
-pkgname=pkgbuild-template
-pkgdesc="Package template for Communitybig"
+
+pkgname=comm-hyprland-config
+pkgdesc="Hyprland Configuration Package"
 # Uncomment and edit the following lines as needed
 #depends=('')
 #makedepends=('')
