@@ -60,7 +60,7 @@ pre_install() {
 	# Copy dotfiles if they don't exist
 	[[ ! -d "$dotfiles_dir" ]] && {
 		printMsg "Copying dotfiles to $user_home..."
-		mkdir -p "$user_home" &>/dev/null
+		mkdir -p "$dotfiles_dir" &>/dev/null
 		cp -r /etc/skel/dotfiles "$user_home/" &>/dev/null
 		chown -R "$user:$user" "$dotfiles_dir" &>/dev/null
 		chmod -R 700 "$dotfiles_dir" &>/dev/null
