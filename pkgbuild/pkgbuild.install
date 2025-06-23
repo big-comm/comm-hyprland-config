@@ -73,9 +73,9 @@ post_install() {
     printMsg "Enabling sddm.service..."
     systemctl enable sddm.service
 
-	msg "Removing Hyprland-UWSM entry from SDDM..."
+	printMsg "Removing Hyprland-UWSM entry from SDDM..."
 	rm -f /usr/share/wayland-sessions/hyprland-uwsm.desktop &>/dev/null
-    
+
     printMsg "Configuration complete!"
 }
 
