@@ -1,196 +1,82 @@
 #!/usr/bin/env bash
-# This file contains scripts that are executed at different stages of package installation/upgrade/removal
 
-# Color definitions for status messages
-blueDark="\e[1;38;5;33m"     # Bold dark blue
-mediumBlue="\e[1;38;5;32m"   # Bold medium blue
-lightBlue="\e[1;38;5;39m"    # Bold light blue
-cyan="\e[1;38;5;45m"         # Bold cyan
-white="\e[1;97m"             # Bold white
-reset="\e[0m"                # Reset text formatting
+blueDark="\e[1;38;5;33m"
+lightBlue="\e[1;38;5;39m"
+cyan="\e[1;38;5;45m"
+white="\e[1;97m"
+reset="\e[0m"
 
-# Print status messages - CHANGE 'PACKAGE_NAME' to your actual package name
 printMsg() {
-    local message=$1
-    echo -e "${blueDark}[${lightBlue}comm-hyprland-config${blueDark}]${reset} ${cyan}→${reset} ${white}${message}${reset}"
+    echo -e "${blueDark}[${lightBlue}comm-hyprland-config${blueDark}]${reset} ${cyan}→${reset} ${white}$1${reset}"
 }
 
-# Function executed before package installation
 pre_install() {
-	# Create the 'sddm' user if it doesn't exist
-	if ! id "sddm" >/dev/null; then
-		printMsg "Creating SDDM user..."
-		useradd -r -s /usr/bin/nologin -M -d /var/lib/sddm sddm &>/dev/null
-	else
-		printMsg "SDDM user already exists, skipping creation."
-	fi
-
-	# Ensure SDDM directory exists with correct permissions
-	printMsg "Setting up SDDM directory..."
-	mkdir -p /var/lib/sddm >/dev/null
-	chown -R sddm:sddm /var/lib/sddm >/dev/null
-
-	printMsg "Checking if /etc/sddm.conf already exists..."
-	#Change SDDM config
-	if [[ -f /etc/sddm.conf ]]; then
-		printMsg "Existing /etc/sddm.conf found. Creating a backup at /etc/sddm.conf.bak..."
-		mv -f /etc/sddm.conf /etc/sddm.conf.bak >/dev/null
-		printMsg "Applying new SDDM configuration..."
-		mv -f /etc/sddm.conf.pacnew /etc/sddm.conf >/dev/null
-	elif [[ -f /etc/sddm.conf.pacnew ]]; then
-		printMsg "No existing SDDM configuration found. Using default settings..."
-		mv -f /etc/sddm.conf.pacnew /etc/sddm.conf >/dev/null
-	fi
-	# Change SDDM default Cursor
-	if [[ -f /usr/share/icons/default/index.theme ]]; then
-		printMsg "Found existing cursor configuration at /usr/share/icons/default/index.theme. Creating a backup at /usr/share/icons/default/index.theme.bak..."
-		mv /usr/share/icons/default/index.theme /usr/share/icons/default/index.theme.bak >/dev/null
-		printMsg "Applying new mouse cursor configuration..."
-		mv /usr/share/icons/default/index.theme.pacnew /usr/share/icons/default/index.theme >/dev/null
-	elif [[ -f /usr/share/icons/default/index.theme.pacnew ]]; then
-		printMsg "No existing cursor configuration found. Applying default settings..."
-		mv /usr/share/icons/default/index.theme.pacnew /usr/share/icons/default/index.theme >/dev/null
-	fi
-	# Configure dotfiles and user settings
-	printMsg "Setting up dotfiles symlinks..."
-	user=$(awk -F: '$3 >= 1000 && $3 < 65000 { print $1; exit }' /etc/passwd)
-	user_home=$(getent passwd "$user" | cut -d: -f6)
-	dotfiles_dir="$user_home/dotfiles"
-
-	# Copy dotfiles if they don't exist
-	[[ ! -d "$dotfiles_dir" ]] && {
-		printMsg "Copying dotfiles to $user_home..."
-		mkdir -p "$user_home" &>/dev/null
-		cp -rp /etc/skel/dotfiles "$user_home/" &>/dev/null
-		chown -R "$user:$user" "$dotfiles_dir" &>/dev/null
-		chmod -R 700 "$dotfiles_dir" &>/dev/null
-	}
-	# Ensure necessary directories exist
-	mkdir -p "$user_home/.backup" "$user_home/.config" &>/dev/null
-	chown "$user:$user" "$user_home/.backup" "$user_home/.config" &>/dev/null
-
-	printMsg "Creating symlinks for home directory files..."
-	for file in .bashrc .gtkrc-2.0 .Xresources; do
-		if [[ -e "$user_home/$file" ]] && [[ ! -L "$user_home/$file" ]]; then
-			printMsg "Backing up existing $file..."
-			mv "$user_home/$file" "$user_home/.backup/$file" >/dev/null
-		fi
-		ln -sf "$dotfiles_dir/$file" "$user_home/$file" >/dev/null
-	done
-	chown -h "$user:$user" "$user_home/.bashrc" "$user_home/.gtkrc-2.0" "$user_home/.Xresources" >/dev/null
-
-	printMsg "Creating symlinks for configuration directories..."
-	config_dirs=(mimeapps.list bashrc dunst fastfetch gtk-3.0 gtk-4.0 hypr kitty ml4w nvim nwg-dock-hyprland ohmyposh qt6ct rofi swaync vim wal waybar waypaper wlogout xsettingsd)
-
-	for dir in "${config_dirs[@]}"; do
-		if [[ -e "$user_home/.config/$dir" && ! -L "$user_home/.config/$dir" ]]; then
-			printMsg "Backing up existing ~/.config/$dir..."
-			mv "$user_home/.config/$dir" "$user_home/.backup/$dir" &>/dev/null
-		fi
-		if [[ ! -e "$user_home/.config/$dir" ]]; then
-			printMsg "Creating symlink for ~/.config/$dir..."
-			ln -sf "$dotfiles_dir/.config/$dir" "$user_home/.config/$dir" &>/dev/null
-		fi
-	done
-	
-	chown -hR "$user:$user" "$user_home/.config/" >/dev/null
-
-	# Apply wallpaper using Pywal
-	if command -v wal &>/dev/null; then
-		printMsg "Applying wallpaper using Pywal for user: $user"
-		sudo -u "$user" wal -i /usr/share/backgrounds/community/animal-hpr-001.jpg >/dev/null
-	else
-		printMsg "Warning: 'wal' command not found. Skipping wallpaper setup.${reset}"
-	fi
-
-	# Install GNOME Platform runtime globally
-	printMsg "Installing GNOME Platform runtime..."
-
-	if $IN_CHROOT_INSTALLER; then
-    sh_start_dbus_in_chroot
-  fi
-	flatpak install -y org.gnome.Platform/x86_64/47 &>/dev/null
-
-	# Configure Nautilus
-	printMsg "Configuring Nautilus..."
-	if glib-compile-schemas /usr/share/glib-2.0/schemas/; then
-		printMsg "Nautilus schemas compiled successfully!"
-	else
-		printMsg "Warning: Failed to compile Nautilus schemas. Some features may not work correctly.${reset}"
-	fi
-
-	# Install local Flatpak applications
-	printMsg "Installing local Flatpak apps..."
-	flatpak_dir="/etc/skel/dotfiles/flatpak"
-	for app in calendar welcome settings sidebar; do
-		flatpak_file="$flatpak_dir/com.ml4w.${app}.flatpak"
-		if [[ -f "$flatpak_file" ]]; then
-			#			sudo -u "$user" bash -c "flatpak install --user -y '$flatpak_file'" &>/dev/null
-			#su - "$user" -c "flatpak install --user -y '$flatpak_file'" &>/dev/null
-			flatpak install -y "$flatpak_file" &>/dev/null
-			printMsg ":: com.ml4w.${app}.flatpak installed"
-		else
-			printMsg "Warning: $flatpak_file not found, skipping...${reset}"
-		fi
-	done
-	printMsg "Flatpak applications installed successfully!"
-
-	printMsg "Enable sddm"
-	systemctl enable sddm
+    printMsg "Preparing system for comm-hyprland-config..."
+    if ! id "sddm" >/dev/null; then
+        printMsg "Creating SDDM user..."
+        useradd -r -s /usr/bin/nologin -M -d /var/lib/sddm sddm
+    fi
+    mkdir -p /var/lib/sddm
+    chown -R sddm:sddm /var/lib/sddm
 }
 
-# Function executed after package installation
-# post_install() {
-#     printMsg "Configuring the package after installation..."
-#     # Example: Create a configuration directory
-#     # mkdir -p /etc/mypackage
-#     # chmod 755 /etc/mypackage
-#     # printMsg "Created configuration directory"
-#
-#     # Example: Start a service
-#     # systemctl enable myservice.service
-#     # systemctl start myservice.service
-#     # printMsg "Service enabled and started"
-# }
 
-# Function executed before package upgrade
-# pre_upgrade() {
-#     printMsg "Preparing to upgrade the package..."
-#     # Example: Backup configuration files
-#     # cp /etc/mypackage/config.conf /etc/mypackage/config.conf.bak
-#     # printMsg "Configuration backup created"
-# }
+post_install() {
+    printMsg "Finalizing comm-hyprland-config installation..."
 
-# Function executed after package upgrade
-# post_upgrade() {
-#     printMsg "Finalizing package upgrade..."
-#     # Usually, post_install is called here to ensure
-#     # all post-installation configurations are applied
-#     # post_install
-#
-#     # Example: Check and update configuration files
-#     # if [ -f /etc/mypackage/config.conf.pacnew ]; then
-#     #     printMsg "New configuration file available. Please review /etc/mypackage/config.conf.pacnew"
-#     # fi
-#     # printMsg "Upgrade completed successfully"
-# }
+    if [[ ! -f /etc/sddm.conf ]] && [[ -f /etc/sddm.conf.pacnew ]]; then
+        printMsg "Applying default SDDM configuration..."
+        mv -f /etc/sddm.conf.pacnew /etc/sddm.conf
+    fi
+    if [[ ! -f /usr/share/icons/default/index.theme ]] && [[ -f /usr/share/icons/default/index.theme.pacnew ]]; then
+        printMsg "Applying default cursor theme..."
+        mv /usr/share/icons/default/index.theme.pacnew /usr/share/icons/default/index.theme
+    fi
 
-# Function executed before package removal
-# pre_remove() {
-#     printMsg "Preparing to remove the package..."
-#     # Example: Stop services
-#     # systemctl stop myservice.service
-#     # systemctl disable myservice.service
-#     # printMsg "Services stopped"
-# }
+    local user=$(awk -F: '$3 >= 1000 && $3 < 65000 { print $1; exit }' /etc/passwd)
+    if [[ -z "$user" ]]; then
+        printMsg "Warning: No regular user found. Skipping user-specific configurations.${reset}"
+    else
+        printMsg "Applying configurations for user: $user"
+        local user_home=$(getent passwd "$user" | cut -d: -f6)
+        local dotfiles_dir="$user_home/dotfiles"
 
-# Function executed after package removal
-# post_remove() {
-#     printMsg "Cleaning up after package removal..."
-#     # Example: Remove data directories created by the package
-#     # rm -rf /var/lib/mypackage
-#     # printMsg "Package directories removed"
-#
-#     # printMsg "If you want to remove all user data, run:"
-#     # printMsg "rm -rf /home/*/mypackage_data"
-# }
+        if [[ ! -d "$dotfiles_dir" ]]; then
+            printMsg "Copying dotfiles from /etc/skel to $user_home..."
+            cp -r /etc/skel/dotfiles "$user_home/"
+            chown -R "$user:$user" "$dotfiles_dir"
+        fi
+        mkdir -p "$user_home/.backup" "$user_home/.config"
+        chown "$user:$user" "$user_home/.backup" "$user_home/.config"
+
+        local config_dirs=(mimeapps.list bashrc dunst fastfetch gtk-3.0 gtk-4.0 hypr kitty ml4w nvim nwg-dock-hyprland ohmyposh qt6ct rofi swaync vim waybar waypaper wlogout xsettingsd)
+        for dir in "${config_dirs[@]}"; do
+            if [[ -d "$user_home/.config/$dir" && ! -L "$user_home/.config/$dir" ]]; then
+                mv "$user_home/.config/$dir" "$user_home/.backup/$dir"
+            fi
+            ln -snf "$dotfiles_dir/.config/$dir" "$user_home/.config/$dir"
+        done
+
+        chown -hR "$user:$user" "$user_home/.config/"
+
+
+        if command -v wal &>/dev/null; then
+            printMsg "Applying wallpaper using Pywal..."
+            sudo -u "$user" wal -i /usr/share/backgrounds/community/animal-hpr-001.jpg -q
+        fi
+    fi
+
+
+    printMsg "Compiling Nautilus schemas..."
+    glib-compile-schemas /usr/share/glib-2.0/schemas/ &>/dev/null
+
+    printMsg "Enabling sddm.service..."
+    systemctl enable sddm.service
+
+    printMsg "Configuration complete!"
+}
+
+
+post_upgrade() {
+    post_install
+}
