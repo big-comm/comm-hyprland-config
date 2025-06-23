@@ -18,12 +18,7 @@ pre_install() {
     fi
     mkdir -p /var/lib/sddm
     chown -R sddm:sddm /var/lib/sddm
-}
-
-
-post_install() {
-    printMsg "Finalizing comm-hyprland-config installation..."
-
+    
     if [[ ! -f /etc/sddm.conf ]] && [[ -f /etc/sddm.conf.pacnew ]]; then
         printMsg "Applying default SDDM configuration..."
         mv -f /etc/sddm.conf.pacnew /etc/sddm.conf
@@ -31,90 +26,41 @@ post_install() {
     if [[ ! -f /usr/share/icons/default/index.theme ]] && [[ -f /usr/share/icons/default/index.theme.pacnew ]]; then
         printMsg "Applying default cursor theme..."
         mv /usr/share/icons/default/index.theme.pacnew /usr/share/icons/default/index.theme
-    fi
+    fi    
+}
 
-    local user=$(awk -F: '$3 >= 1000 && $3 < 65000 { print $1; exit }' /etc/passwd)
-    if [[ -z "$user" ]]; then
-        printMsg "Warning: No regular user found. Skipping user-specific configurations.${reset}"
-    else
-        printMsg "Applying configurations for user: $user"
-        local user_home=$(getent passwd "$user" | cut -d: -f6)
-        local dotfiles_dir="$user_home/dotfiles"
+post_install() {
+    printMsg "Finalizing comm-hyprland-config installation (system-level tasks)..."
 
-        if [[ ! -d "$dotfiles_dir" ]]; then
-            printMsg "Copying dotfiles from /etc/skel to $user_home..."
-            cp -r /etc/skel/dotfiles "$user_home/"
-            chown -R "$user:$user" "$dotfiles_dir"
-        fi
-        mkdir -p "$user_home/.backup" "$user_home/.config"
-        chown "$user:$user" "$user_home/.backup" "$user_home/.config"
+    flatpak install -y org.gnome.Platform/x86_64/47 &>/dev/null
 
-        local config_dirs=(mimeapps.list bashrc dunst fastfetch gtk-3.0 gtk-4.0 hypr kitty ml4w nvim nwg-dock-hyprland ohmyposh qt6ct rofi swaync vim waybar waypaper wlogout xsettingsd)
-        for dir in "${config_dirs[@]}"; do
-            if [[ -d "$user_home/.config/$dir" && ! -L "$user_home/.config/$dir" ]]; then
-                mv "$user_home/.config/$dir" "$user_home/.backup/$dir"
+    # Install local Flatpak applications
+    printMsg "Installing local Flatpak apps..."
+    flatpak_dir="/etc/skel/flatpak"
+    
+    for app in calendar welcome settings sidebar; do
+        flatpak_file="$flatpak_dir/com.ml4w.${app}.flatpak"
+            if [[ -f "$flatpak_file" ]]; then
+                flatpak install -y "$flatpak_file" &>/dev/null
+                printMsg ":: com.ml4w.${app}.flatpak installed"
+            else
+                printMsg "Warning: $flatpak_file not found, skipping...${reset}"
             fi
-            ln -snf "$dotfiles_dir/.config/$dir" "$user_home/.config/$dir"
-        done
+    done
 
-        chown -hR "$user:$user" "$user_home/.config/"
+    printMsg "Flatpak applications installed successfully!"
 
-
-        if command -v wal &>/dev/null; then
-            printMsg "Applying wallpaper using Pywal..."
-            sudo -u "$user" wal -i /usr/share/backgrounds/community/animal-hpr-001.jpg -q
-        fi
-    fi
-
-
-    printMsg "Compiling Nautilus schemas..."
+    printMsg "Compiling GLib schemas..."
     glib-compile-schemas /usr/share/glib-2.0/schemas/ &>/dev/null
 
     printMsg "Enabling sddm.service..."
     systemctl enable sddm.service
 
 	printMsg "Removing Hyprland-UWSM entry from SDDM..."
+
 	rm -f /usr/share/wayland-sessions/hyprland-uwsm.desktop &>/dev/null
 
-    printMsg "Configuration complete!"
-}
-
-post_remove() {
-	msg "Removing symlinks and restoring backups..."
-	user=$(awk -F: '$3 >= 1000 && $3 < 65000 { print $1; exit }' /etc/passwd)
-	user_home=$(getent passwd "$user" | cut -d: -f6)
-
-	# Restore home directory files
-	for file in .bashrc .gtkrc-2.0 .Xresources .zshrc; do
-		if [[ -L "$user_home/$file" ]]; then
-			rm "$user_home/$file" >/dev/null
-			[[ -e "$user_home/.backup/$file" ]] && {
-				mv "$user_home/.backup/$file" "$user_home/$file"
-			}
-		fi
-	done
-	.bashrc
-	# Restore configuration directories
-	config_dirs=(mimeapps.list bashrc dunst fastfetch gtk-3.0 gtk-4.0 hypr kitty ml4w nvim nwg-dock-hyprland ohmyposh qt6ct rofi swaync vim wal waybar waypaper wlogout xsettingsd)
-	for dir in "${config_dirs[@]}"; do
-		if [[ -L "$user_home/.config/$dir" ]]; then
-			rm "$user_home/.config/$dir" >/dev/null
-			[[ -e "$user_home/.backup/$dir" ]] && mv "$user_home/.backup/$dir" "$user_home/.config/$dir" >/dev/null
-		fi
-	done
-
-	# Reload .bashrc for the user
-	if [[ -f "$user_home/.bashrc" ]]; then
-		msg "Reloading .bashrc for user: $user"
-		sudo -u "$user" bash -c "source $user_home/.bashrc" >/dev/null
-	fi
-	msg "Restoring files from SDDM..."
-	mv -f /etc/sddm.conf.bak /etc/sddm.conf >/dev/null
-	
-	msg "Restoring Cursor Theme..."
-	mv -f /usr/share/icons/default/index.theme.bak /usr/share/icons/default/index.theme  >/dev/null	
-
-	msg "Symlinks removed, backups restored, and .bashrc reloaded for user: $user!"
+    printMsg "System configuration complete! User files are staged in /etc/skel."
 }
 
 post_upgrade() {
