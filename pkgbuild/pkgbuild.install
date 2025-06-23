@@ -73,9 +73,49 @@ post_install() {
     printMsg "Enabling sddm.service..."
     systemctl enable sddm.service
 
+	msg "Removing Hyprland-UWSM entry from SDDM..."
+	rm -f /usr/share/wayland-sessions/hyprland-uwsm.desktop &>/dev/null
+    
     printMsg "Configuration complete!"
 }
 
+post_remove() {
+	msg "Removing symlinks and restoring backups..."
+	user=$(awk -F: '$3 >= 1000 && $3 < 65000 { print $1; exit }' /etc/passwd)
+	user_home=$(getent passwd "$user" | cut -d: -f6)
+
+	# Restore home directory files
+	for file in .bashrc .gtkrc-2.0 .Xresources .zshrc; do
+		if [[ -L "$user_home/$file" ]]; then
+			rm "$user_home/$file" >/dev/null
+			[[ -e "$user_home/.backup/$file" ]] && {
+				mv "$user_home/.backup/$file" "$user_home/$file"
+			}
+		fi
+	done
+	.bashrc
+	# Restore configuration directories
+	config_dirs=(mimeapps.list bashrc dunst fastfetch gtk-3.0 gtk-4.0 hypr kitty ml4w nvim nwg-dock-hyprland ohmyposh qt6ct rofi swaync vim wal waybar waypaper wlogout xsettingsd)
+	for dir in "${config_dirs[@]}"; do
+		if [[ -L "$user_home/.config/$dir" ]]; then
+			rm "$user_home/.config/$dir" >/dev/null
+			[[ -e "$user_home/.backup/$dir" ]] && mv "$user_home/.backup/$dir" "$user_home/.config/$dir" >/dev/null
+		fi
+	done
+
+	# Reload .bashrc for the user
+	if [[ -f "$user_home/.bashrc" ]]; then
+		msg "Reloading .bashrc for user: $user"
+		sudo -u "$user" bash -c "source $user_home/.bashrc" >/dev/null
+	fi
+	msg "Restoring files from SDDM..."
+	mv -f /etc/sddm.conf.bak /etc/sddm.conf >/dev/null
+	
+	msg "Restoring Cursor Theme..."
+	mv -f /usr/share/icons/default/index.theme.bak /usr/share/icons/default/index.theme  >/dev/null	
+
+	msg "Symlinks removed, backups restored, and .bashrc reloaded for user: $user!"
+}
 
 post_upgrade() {
     post_install
