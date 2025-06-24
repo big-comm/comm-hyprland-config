@@ -41,7 +41,7 @@ post_install() {
     
     printMsg "Flatpak applications installed successfully!"
 
-    if [[ -f /etc/skel/.bashrc.comm-hyprland ]]; then
+    if [[ -f /etc/skel/.bashrc.pacnew ]]; then
         printMsg "Overwriting default /etc/skel/.bashrc with comm-hyprland version..."
         mv -f /etc/skel/.bashrc.pacnew  /etc/skel/.bashrc
     fi
@@ -54,15 +54,21 @@ post_install() {
     if [[ ! -f /etc/sddm.conf ]] && [[ -f /etc/sddm.conf.pacnew ]]; then
         printMsg "Applying default SDDM configuration..."
         mv -f /etc/sddm.conf.pacnew /etc/sddm.conf
-    fi    
+    fi
 
-    printMsg "Compiling GLib schemas..."
-    glib-compile-schemas /usr/share/glib-2.0/schemas/ &>/dev/null
+    # Enable default display manager
+    SERVICE_FILE="/usr/lib/systemd/system/sddm.service"
+    SYMLINK_TARGET="/etc/systemd/system/display-manager.service"
 
-    printMsg "Enabling sddm.service..."
-    systemctl enable sddm.service
+    printMsg "Enabling sddm.service by creating the systemd symlink..."
 
-	printMsg "Removing Hyprland-UWSM entry from SDDM..."
+    if [ -f "$SERVICE_FILE" ]; then
+        rm -f "$SYMLINK_TARGET"
+        ln -sf "$SERVICE_FILE" "$SYMLINK_TARGET"
+        printMsg "SDDM successfully set as the default display manager."
+    else
+        printMsg "Warning: $SERVICE_FILE not found. Could not enable sddm.service."
+    fi
 
 	rm -f /usr/share/wayland-sessions/hyprland-uwsm.desktop &>/dev/null
 
