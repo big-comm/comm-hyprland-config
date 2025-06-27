@@ -6,6 +6,8 @@ if [ -f "$FIRST_RUN_FLAG" ]; then
     exit 0
 fi
 
+sleep 3
+
 wal -i /usr/share/backgrounds/community/animal-hpr-001.jpg --saturate 0.6 &>/dev/null
 
 mkdir -p "$(dirname "$FIRST_RUN_FLAG")"
