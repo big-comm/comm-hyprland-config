@@ -8,8 +8,6 @@
 # Check to use wallpaper cache
 # -----------------------------------------------------
 
-sleep 3
-
 if [ -f ~/.config/ml4w/settings/wallpaper_cache ]; then
     use_cache=1
     echo ":: Using Wallpaper Cache"
