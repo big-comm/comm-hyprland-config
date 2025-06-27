@@ -5,7 +5,7 @@
 pkgname=comm-hyprland-config
 pkgdesc="Hyprland Configuration Package"
 # Uncomment and edit the following lines as needed
-depends=('sddm')
+depends=('sddm' 'hyprland')
 #makedepends=('')
 #optdepends=('')
 #conflicts=('')
