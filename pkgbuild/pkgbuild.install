@@ -70,7 +70,14 @@ post_install() {
         printMsg "Warning: $SERVICE_FILE not found. Could not enable sddm.service."
     fi
 
-	rm -f /usr/share/wayland-sessions/hyprland-uwsm.desktop &>/dev/null
+    UWSM_FILE="/usr/share/wayland-sessions/hyprland-uwsm.desktop"
+
+    if [ -f "$UWSM_FILE" ]; then
+        if ! grep -q "NoDisplay=true" "$UWSM_FILE"; then
+            printMsg "Ohiding the session entry 'hyprland-uwsm'..."
+            echo "NoDisplay=true" >> "$UWSM_FILE"
+        fi
+    fi
 
     printMsg "System configuration complete!!!"
 }
