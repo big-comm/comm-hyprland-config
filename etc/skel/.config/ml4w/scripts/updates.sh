@@ -8,19 +8,24 @@
 #  
 
 script_name=$(basename "$0")
-
-# Count the instances
 instance_count=$(ps aux | grep -F "$script_name" | grep -v grep | grep -v $$ | wc -l)
-
 if [ $instance_count -gt 1 ]; then
     sleep $instance_count
 fi
 
+TRANSLATIONS_FILE="$HOME/.config/waybar/translations.json"
 
+CURRENT_LOCALE=$(echo $LANG | cut -d. -f1)
+DEFAULT_LOCALE="en_US"
+if ! jq -e ".\"$CURRENT_LOCALE\"" "$TRANSLATIONS_FILE" > /dev/null 2>&1; then
+    CURRENT_LOCALE=$DEFAULT_LOCALE
+fi
+
+TOOLTIP_UPDATES_AVAILABLE=$(jq -r ".\"$CURRENT_LOCALE\".update_system_tooltip // \"Click to update your system\"" "$TRANSLATIONS_FILE")
+TOOLTIP_NO_UPDATES=$(jq -r ".\"$CURRENT_LOCALE\".no_updates_tooltip // \"No updates available\"" "$TRANSLATIONS_FILE")
 # ----------------------------------------------------- 
+
 # Define threshholds for color indicators
-# ----------------------------------------------------- 
-
 threshhold_green=0
 threshhold_yellow=25
 threshhold_red=100
@@ -30,27 +35,14 @@ install_platform="$(cat ~/.config/ml4w/settings/platform.sh)"
 case $install_platform in
     arch)
         aur_helper="$(cat ~/.config/ml4w/settings/aur.sh)"
-
-        # ----------------------------------------------------- 
-        # Calculate available updates
-        # ----------------------------------------------------- 
-
-        # flatpak remote-ls --updates
-
-        # -----------------------------------------------------------------------------
-        # Check for pacman or checkupdates-with-aur database lock and wait if necessary
-        # -----------------------------------------------------------------------------
         check_lock_files() {
             local pacman_lock="/var/lib/pacman/db.lck"
             local checkup_lock="${TMPDIR:-/tmp}/checkup-db-${UID}/db.lck"
-
             while [ -f "$pacman_lock" ] || [ -f "$checkup_lock" ]; do
                 sleep 1
             done
         }
-
         check_lock_files
-
         updates=$(checkupdates-with-aur | wc -l)
     ;;
     fedora)
@@ -64,19 +56,16 @@ esac
 # ----------------------------------------------------- 
 # Output in JSON format for Waybar Module custom-updates
 # ----------------------------------------------------- 
-
 css_class="green"
-
 if [ "$updates" -gt $threshhold_yellow ]; then
     css_class="yellow"
 fi
-
 if [ "$updates" -gt $threshhold_red ]; then
     css_class="red"
 fi
 
 if [ "$updates" -gt $threshhold_green ]; then
-    printf '{"text": "%s", "alt": "%s", "tooltip": "Click to update your system", "class": "%s"}' "$updates" "$updates" "$css_class"
+    printf '{"text": "%s", "alt": "%s", "tooltip": "%s", "class": "%s"}' "$updates" "$updates" "$TOOLTIP_UPDATES_AVAILABLE" "$css_class"
 else
-    printf '{"text": "0", "alt": "0", "tooltip": "No updates available", "class": "green"}'
+    printf '{"text": "0", "alt": "0", "tooltip": "%s", "class": "green"}' "$TOOLTIP_NO_UPDATES"
 fi

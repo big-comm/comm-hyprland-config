@@ -1,80 +1,57 @@
-/*
-Define your quick links for the statusbar here.
-YOu can use icons from here https://fontawesome.com/search?ic=free
-You can reload waybar with SUPER + SHIFT + B
-*/
 {
     "custom/quicklink_browser": {
         "format": "",
         "on-click": "~/.config/ml4w/settings/comm-site.sh",
-        "tooltip-format": "Open Browser"
+        "tooltip-format": "__OPEN_BROWSER__"
     },
     "custom/quicklink_filemanager": {
         "format": "",
         "on-click": "~/.config/ml4w/settings/filemanager.sh",
-        "tooltip-format": "Open Filemanager"
+        "tooltip-format": "__OPEN_FILEMANAGER__"
     },
     "custom/quicklink_texteditor": {
       "format": "  ",
       "on-click": "gnome-text-editor --new-window",
-      "tooltip-format": "Open Text Editor"
+      "tooltip-format": "__OPEN_TEXT_EDITOR__"
     },
     "custom/quicklink_kitty": {
         "format": " ",
         "on-click": "kitty",
-        "tooltip-format": "Open Terminal"
+        "tooltip-format": "__OPEN_TERMINAL__"
       },    
-    //"custom/quicklink_email": {
-    //    "format": "",
-    //    "on-click": "~/.config/ml4w/settings/email.sh",
-    //    "tooltip-format": "Open Email Client"
-    //},
     "custom/quicklink_chromium": {
         "format": "",
         "on-click": "chromium",
-        "tooltip-format": "Open Chromium"
+        "tooltip-format": "__OPEN_CHROMIUM__"
     },
     "custom/quicklink_edge": {
         "format": "",
         "on-click": "edge",
-        "tooltip-format": "Open Edge"
+        "tooltip-format": "__OPEN_EDGE__"
     },
     "custom/quicklink_firefox": {
         "format": "",
         "on-click": "firefox",
-        "tooltip-format": "Open Firefox"
+        "tooltip-format": "__OPEN_FIREFOX__"
     },
     "custom/quicklink_thunderbird": {
         "format": "",
         "on-click": "thunderbird",
-        "tooltip-format": "Open Thunderbird"
+        "tooltip-format": "__OPEN_THUNDERBIRD__"
     },
     "custom/quicklink_calculator": {
         "format": "",
         "on-click": "~/.config/ml4w/settings/calculator.sh",
-        "tooltip-format": "Open calculator"
+        "tooltip-format": "__OPEN_CALCULATOR__"
     },
-/*
-Don't remove the quicklinkempty
-*/
-    "custom/quicklinkempty": {
-    },
-/*
-Add your quicklinks in your desired order to the status bar
-*/
+    "custom/quicklinkempty": {},
     "group/quicklinks": {
         "orientation": "horizontal",
         "modules": [
-
             "custom/quicklink_browser",
-            //"custom/quicklink_email",
             "custom/quicklink_filemanager",
-	        "custom/quicklink_texteditor",
+            "custom/quicklink_texteditor",
             "custom/quicklink_kitty",
-
-/*
-Don't remove the quicklinkempty
-*/
             "custom/quicklinkempty"
         ]
     }

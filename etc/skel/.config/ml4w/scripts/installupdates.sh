@@ -8,22 +8,49 @@
 
 sleep 1
 clear
+
+TRANSLATIONS_FILE="$HOME/.config/waybar/translations.json"
+
+CURRENT_LOCALE=$(echo $LANG | cut -d. -f1)
+DEFAULT_LOCALE="en_US"
+if ! jq -e ".\"$CURRENT_LOCALE\"" "$TRANSLATIONS_FILE" > /dev/null 2>&1; then
+    CURRENT_LOCALE=$DEFAULT_LOCALE
+fi
+
+
+get_string() {
+    jq -r ".\"$CURRENT_LOCALE\".$1 // .\"$DEFAULT_LOCALE\".$1" "$TRANSLATIONS_FILE"
+}
+
+TITLE_UPDATES=$(get_string "updates_title")
+PROMPT_START_UPDATE=$(get_string "prompt_start_update")
+MSG_UPDATE_STARTED=$(get_string "msg_update_started")
+MSG_UPDATE_CANCELED=$(get_string "msg_update_canceled")
+PROMPT_CREATE_SNAPSHOT=$(get_string "prompt_create_snapshot")
+PLACEHOLDER_SNAPSHOT_COMMENT=$(get_string "placeholder_snapshot_comment")
+MSG_SNAPSHOT_CREATED=$(get_string "msg_snapshot_created")
+MSG_SNAPSHOT_SKIPPED=$(get_string "msg_snapshot_skipped")
+ERR_PLATFORM_NOT_SUPPORTED=$(get_string "err_platform_not_supported")
+MSG_PRESS_ENTER_TO_CLOSE=$(get_string "msg_press_enter_to_close")
+MSG_UPDATE_COMPLETE=$(get_string "msg_update_complete")
+# ----------------------------------------------------- 
+
 install_platform="$(cat ~/.config/ml4w/settings/platform.sh)"
-figlet -f smslant "Updates"
+figlet -f smslant "$TITLE_UPDATES"
 echo
 
 # ------------------------------------------------------
 # Confirm Start
 # ------------------------------------------------------
 
-if gum confirm "DO YOU WANT TO START THE UPDATE NOW?"; then
+if gum confirm "$PROMPT_START_UPDATE"; then
     echo
-    echo ":: Update started."
+    echo "$MSG_UPDATE_STARTED"
 elif [ $? -eq 130 ]; then
     exit 130
 else
     echo
-    echo ":: Update canceled."
+    echo "$MSG_UPDATE_CANCELED"
     exit
 fi
 
@@ -31,6 +58,7 @@ _isInstalled() {
     package="$1"
     case $install_platform in
         arch)
+            aur_helper="$(cat ~/.config/ml4w/settings/aur.sh)"
             check="$($aur_helper -Qs --color always "${package}" | grep "local" | grep "${package} ")"
             ;;
         fedora)
@@ -54,19 +82,19 @@ case $install_platform in
 
         if [[ $(_isInstalled "timeshift") == "0" ]]; then
             echo
-            if gum confirm "DO YOU WANT TO CREATE A SNAPSHOT?"; then
+            if gum confirm "$PROMPT_CREATE_SNAPSHOT"; then
                 echo
-                c=$(gum input --placeholder "Enter a comment for the snapshot...")
+                c=$(gum input --placeholder "$PLACEHOLDER_SNAPSHOT_COMMENT")
                 sudo timeshift --create --comments "$c"
                 sudo timeshift --list
                 sudo grub-mkconfig -o /boot/grub/grub.cfg
-                echo ":: DONE. Snapshot $c created!"
+                printf "$MSG_SNAPSHOT_CREATED\n" "$c"
                 echo
             elif [ $? -eq 130 ]; then
-                echo ":: Snapshot skipped."
+                echo "$MSG_SNAPSHOT_SKIPPED"
                 exit 130
             else
-                echo ":: Snapshot skipped."
+                echo "$MSG_SNAPSHOT_SKIPPED"
             fi
             echo
         fi
@@ -84,17 +112,17 @@ case $install_platform in
         fi
         ;;
     *)
-        echo ":: ERROR - Platform not supported"
-        echo "Press [ENTER] to close."
+        echo "$ERR_PLATFORM_NOT_SUPPORTED"
+        echo "$MSG_PRESS_ENTER_TO_CLOSE"
         read
         ;;
 esac
 
-notify-send "Update complete"
+notify-send "$MSG_UPDATE_COMPLETE"
 echo
-echo ":: Update complete"
+echo ":: $MSG_UPDATE_COMPLETE"
 echo
 echo
 
-echo "Press [ENTER] to close."
+echo "$MSG_PRESS_ENTER_TO_CLOSE"
 read
