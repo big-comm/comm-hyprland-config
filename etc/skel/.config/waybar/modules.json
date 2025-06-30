@@ -55,9 +55,10 @@
 
   // ML4W Welcome App
   "custom/ml4w-welcome": {
-    "on-click": "flatpak run com.ml4w.sidebar",
+    //"on-click": "",
     "format": " ",
-    "tooltip-format": "Open Sidebar App"
+    //"tooltip-format": "BigCommunity"
+    "tooltip": false
   },
 
   // Empty
@@ -226,13 +227,25 @@
   },
 
   // Clock
+  //"clock": {
+  //  "format": "{:%H:%M %a}",
+  //  "on-click": "flatpak run com.ml4w.calendar",
+  //  "timezone": "",
+  //  "tooltip": false
+  //},
+  // Clock
   "clock": {
-    "format": "{:%H:%M %a}",
-    "on-click": "flatpak run com.ml4w.calendar",
-    "timezone": "",
-    "tooltip": false
+      "format": " {:%a, %d/%m    %H:%M}",
+      "interval": 1,                                                                                                                                                                          
+      "rotate": 0,
+      "tooltip-format": "<tt>{calendar}</tt>",
+      "calendar": {
+          "mode": "month",
+          "mode-mon-col": 3,
+          "on-scroll": 1,
+          "on-click-right": "mode"
+      }
   },
-
   // System
   "custom/system": {
     "format": "",

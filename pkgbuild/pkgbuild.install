@@ -23,24 +23,6 @@ pre_install() {
 post_install() {
     printMsg "Finalizing comm-hyprland-config installation (system-level tasks)..."
 
-    flatpak install -y org.gnome.Platform/x86_64/47 &>/dev/null
-
-    # Install local Flatpak applications
-    printMsg "Installing local Flatpak apps..."
-    flatpak_dir="/etc/skel/flatpak"
-    
-    for app in calendar welcome settings sidebar; do
-        flatpak_file="$flatpak_dir/com.ml4w.${app}.flatpak"
-            if [[ -f "$flatpak_file" ]]; then
-                flatpak install -y "$flatpak_file" &>/dev/null
-                printMsg ":: com.ml4w.${app}.flatpak installed"
-            else
-                printMsg "Warning: $flatpak_file not found, skipping...${reset}"
-            fi
-    done
-    
-    printMsg "Flatpak applications installed successfully!"
-
     if [[ -f /etc/skel/.bashrc.pacnew ]]; then
         printMsg "Overwriting default /etc/skel/.bashrc with comm-hyprland version..."
         mv -f /etc/skel/.bashrc.pacnew  /etc/skel/.bashrc
